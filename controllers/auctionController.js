@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Auction = require('../models/Auction');
 const Category = require('../models/Category');
@@ -225,7 +226,36 @@ const getAuctions = async (req, res) => {
     }
 
     if (category) {
-      filter.categoryId = category;
+      // Check if category is an ObjectId or a slug
+      if (mongoose.Types.ObjectId.isValid(category)) {
+        // If it's a valid ObjectId, use it directly
+        filter.categoryId = category;
+      } else {
+        // If it's a slug, look up the category ObjectId
+        try {
+          const categoryDoc = await Category.findOne({ slug: category.toLowerCase() });
+          if (categoryDoc) {
+            filter.categoryId = categoryDoc._id;
+          } else {
+            // If category not found, return empty results
+            return res.json({
+              success: true,
+              data: {
+                auctions: [],
+                totalCount: 0,
+                currentPage: parseInt(page),
+                totalPages: 0,
+                hasNextPage: false,
+                hasPrevPage: false
+              }
+            });
+          }
+        } catch (slugLookupError) {
+          console.error('Error looking up category by slug:', slugLookupError);
+          // Fall back to treating it as ObjectId (original behavior)
+          filter.categoryId = category;
+        }
+      }
     }
 
     // Add featured filter
