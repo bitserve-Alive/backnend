@@ -64,8 +64,15 @@ const verifyToken = async (req, res, next) => {
 const verifyRefreshToken = async (req, res, next) => {
   try {
     const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
+    console.log('🔍 Middleware - Refresh token check:', {
+      hasBodyToken: !!req.body.refreshToken,
+      hasCookieToken: !!req.cookies.refreshToken,
+      tokenExists: !!refreshToken,
+      tokenPreview: refreshToken ? refreshToken.substring(0, 20) + '...' : 'none'
+    });
 
     if (!refreshToken) {
+      console.log('❌ Middleware - No refresh token found');
       return res.status(401).json({
         success: false,
         message: 'Refresh token required.'
@@ -73,17 +80,22 @@ const verifyRefreshToken = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(refreshToken, config.jwt.refreshSecret);
+    console.log('🔍 Middleware - Token decoded successfully, userId:', decoded.userId);
+    
     const user = await User.findOne({ 
       _id: decoded.userId,
       refreshToken: refreshToken
     });
 
     if (!user) {
+      console.log('❌ Middleware - User not found or refresh token mismatch');
       return res.status(401).json({
         success: false,
         message: 'Invalid refresh token.'
       });
     }
+    
+    console.log('✅ Middleware - Refresh token validation successful');
 
     req.user = {
       id: user._id.toString(),
@@ -98,6 +110,7 @@ const verifyRefreshToken = async (req, res, next) => {
     req.refreshToken = refreshToken;
     next();
   } catch (error) {
+    console.log('❌ Middleware - Refresh token verification error:', error.message);
     return res.status(401).json({
       success: false,
       message: 'Invalid refresh token.'

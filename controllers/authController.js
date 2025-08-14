@@ -261,7 +261,9 @@ const login = async (req, res) => {
 // Refresh token
 const refreshToken = async (req, res) => {
   try {
-    const { refreshToken: token } = req.cookies;
+    // Get refresh token from cookies or body (consistent with middleware)
+    const token = req.body.refreshToken || req.cookies.refreshToken;
+console.log("token demanded check", token);
 
     if (!token) {
       return res.status(401).json({
